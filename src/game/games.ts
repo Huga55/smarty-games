@@ -2,12 +2,23 @@ import { items } from '../content/items'
 import { oddSets } from '../content/odd'
 import { cars, heroes } from '../content/pictures'
 import { riddles, sequences } from '../content/riddles'
+import {
+  braveTasks,
+  chainBuildings,
+  chainEndings,
+  chainHidings,
+  chainMoods,
+  chainPlaces,
+  chainWays,
+  scaryGuests,
+  scarySounds,
+} from '../content/scary'
 import type { Cat, Item } from '../content/types'
 import { letters, pantomimeExtras, speedTopics, wordCategories } from '../content/words'
 import type { WordCategory } from '../content/words'
 import { nextFrom, pick, randomInt, sample, shuffle } from '../lib/random'
 import type { Settings } from '../lib/storage'
-import type { CardRound, ChangedRound, Game, MemoryRound, Round, TimerRound } from './types'
+import type { CardRound, ChainRound, ChangedRound, Game, MemoryRound, Round, TimerRound } from './types'
 
 const livingCats: Cat[] = ['животное', 'птица', 'рыба', 'насекомое']
 
@@ -463,6 +474,84 @@ const speedGame: Game = {
   },
 }
 
+// ─── Страшилки ────────────────────────────────────────────────────────
+
+const darkStoryGame: Game = {
+  id: 'darkstory',
+  title: 'Тёмная-тёмная история',
+  emoji: '🌒',
+  section: 'scary',
+  howTo: 'Открываем по одному шагу, ребёнок повторяет и добавляет своё. В конце — кто там!',
+  scoring: false,
+  next: (): ChainRound => ({
+    mode: 'chain',
+    steps: [
+      nextFrom('chainPlaces', chainPlaces),
+      nextFrom('chainBuildings', chainBuildings),
+      nextFrom('chainWays', chainWays),
+      nextFrom('chainHidings', chainHidings),
+    ],
+    ending: nextFrom('chainEndings', chainEndings),
+    prompt: 'Слушай внимательно... В одном месте был...',
+    hints: [pick(chainMoods), 'Развязка всегда добрая — пугать не нужно, нужно интриговать'],
+  }),
+}
+
+const banishGame: Game = {
+  id: 'banish',
+  title: 'Прогони страшилку',
+  emoji: '👻',
+  section: 'scary',
+  howTo: 'К нам пришла страшилка. Ребёнок придумывает, как её прогнать по-доброму.',
+  scoring: false,
+  next: (): CardRound => {
+    const guest = nextFrom('scaryGuests', scaryGuests)
+    return {
+      mode: 'card',
+      visual: { kind: 'emoji', emojis: [guest.emoji] },
+      subject: guest.name,
+      prompt: `К нам пришло: ${guest.name}. И вот что смешно — ${guest.quirk}. Что будем делать?`,
+      hints: guest.ideas,
+      note: 'Соглашайся с любой идеей ребёнка и развивай её. Страшилка всегда уходит смеясь.',
+    }
+  },
+}
+
+const braveGame: Game = {
+  id: 'brave',
+  title: 'Страшилка наоборот',
+  emoji: '🙈',
+  section: 'scary',
+  howTo: 'Пугает ребёнок, а взрослый смешно боится. Бояться нужно очень старательно.',
+  scoring: false,
+  next: (): CardRound => ({
+    mode: 'card',
+    visual: { kind: 'none' },
+    prompt: nextFrom('braveTasks', braveTasks),
+    hints: ['Испугайся как следует: ойкни, спрячься за подушку, задрожи', 'А потом обязательно посмейтесь вместе'],
+  }),
+}
+
+const nightSoundGame: Game = {
+  id: 'nightsound',
+  title: 'Что за шум?',
+  emoji: '👂',
+  section: 'scary',
+  howTo: 'Произносим звук и вместе придумываем нестрашные объяснения.',
+  scoring: false,
+  next: (): CardRound => {
+    const sound = nextFrom('scarySounds', scarySounds)
+    return {
+      mode: 'card',
+      visual: { kind: 'none' },
+      prompt: `Вечером слышно: ${sound.sound}. Что это может быть? Придумай три ответа!`,
+      speech: `Вечером слышно: ${sound.sound}. Что это может быть?`,
+      hints: sound.ideas,
+      note: 'Все ответы — обычные домашние дела. Смысл игры в том, что непонятный звук всегда чем-то объясняется.',
+    }
+  },
+}
+
 export const games: Game[] = [
   carsGame,
   heroesGame,
@@ -479,6 +568,10 @@ export const games: Game[] = [
   explainGame,
   storyGame,
   speedGame,
+  darkStoryGame,
+  banishGame,
+  braveGame,
+  nightSoundGame,
 ]
 
 export function availableGames(): Game[] {

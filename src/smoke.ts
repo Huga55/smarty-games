@@ -41,6 +41,11 @@ for (const game of games) {
         if (diff !== 1) problems.push(`${where}: изменилось ${diff} картинок вместо одной`)
       }
       if (round.mode === 'timer' && round.seconds <= 0) problems.push(`${where}: таймер на ${round.seconds} секунд`)
+      if (round.mode === 'chain') {
+        if (round.steps.length < 3) problems.push(`${where}: в истории всего ${round.steps.length} шага`)
+        if (round.steps.some((step) => !step.emoji || !step.text)) problems.push(`${where}: пустой шаг истории`)
+        if (!round.ending.emoji || !round.ending.text) problems.push(`${where}: пустая развязка`)
+      }
     }
   }
 }

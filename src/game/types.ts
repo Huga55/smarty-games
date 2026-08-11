@@ -48,9 +48,16 @@ export interface TimerRound extends RoundBase {
   seconds: number
 }
 
-export type Round = CardRound | MemoryRound | ChangedRound | TimerRound
+/** История, которая открывается по одному шагу, с обязательной доброй развязкой. */
+export interface ChainRound extends RoundBase {
+  mode: 'chain'
+  steps: { emoji: string; text: string }[]
+  ending: { emoji: string; text: string }
+}
 
-export type SectionId = 'look' | 'listen' | 'together'
+export type Round = CardRound | MemoryRound | ChangedRound | TimerRound | ChainRound
+
+export type SectionId = 'look' | 'listen' | 'together' | 'scary'
 
 export interface Section {
   id: SectionId
@@ -62,6 +69,7 @@ export const sections: Section[] = [
   { id: 'look', title: 'Смотри и называй', hint: 'Экран показываем ребёнку' },
   { id: 'listen', title: 'Слушай и отвечай', hint: 'Экран нужен только взрослому' },
   { id: 'together', title: 'Играем вместе', hint: 'Тут играют оба' },
+  { id: 'scary', title: 'Страшилки', hint: 'Пугаемся и смеёмся' },
 ]
 
 export interface Game {

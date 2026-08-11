@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { Game, Round } from '../game/types'
+import type { ChainRound, Game, Round } from '../game/types'
 import { speak, speechAvailable } from '../lib/speech'
 import type { Settings } from '../lib/storage'
 import Visual from './Visual'
 
-type Phase = 'play' | 'show' | 'ask' | 'check' | 'before' | 'after' | 'idle' | 'run' | 'over'
+type Phase = 'play' | 'show' | 'ask' | 'check' | 'before' | 'after' | 'idle' | 'run' | 'over' | 'chain'
 
 function initialPhase(round: Round): Phase {
   if (round.mode === 'memory') return 'show'
   if (round.mode === 'changed') return 'before'
   if (round.mode === 'timer') return 'idle'
+  if (round.mode === 'chain') return 'chain'
   return 'play'
 }
 
@@ -17,6 +18,13 @@ function initialSeconds(round: Round): number {
   if (round.mode === 'memory' || round.mode === 'changed') return round.showSeconds
   if (round.mode === 'timer') return round.seconds
   return 0
+}
+
+/** Строка истории для очередного шага; последняя — развязка. */
+function chainLine(round: ChainRound, index: number): string {
+  const step = round.steps[index]
+  if (!step) return `А внутри... ${round.ending.text}`
+  return index === 0 ? `Далеко-далеко был ${step.text}` : `А там — ${step.text}`
 }
 
 function buzz(ms: number): void {
@@ -42,6 +50,8 @@ export default function GameScreen({ game, settings }: { game: Game; settings: S
   const [total, setTotal] = useState(0)
   const [finished, setFinished] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(() => initialSeconds(round))
+  /** Сколько шагов истории уже открыто; на один больше числа шагов — открыта развязка. */
+  const [openSteps, setOpenSteps] = useState(1)
 
   const startRound = useCallback((nextRound: Round) => {
     setRound(nextRound)
@@ -50,6 +60,7 @@ export default function GameScreen({ game, settings }: { game: Game; settings: S
     setAnswerShown(false)
     setHintsShown(!nextRound.answer)
     setSecondsLeft(initialSeconds(nextRound))
+    setOpenSteps(1)
   }, [])
 
   const nextTask = useCallback(() => {
@@ -89,14 +100,18 @@ export default function GameScreen({ game, settings }: { game: Game; settings: S
     }
   }, [phase, secondsLeft])
 
-  const speechText = useMemo(() => round.speech ?? round.prompt, [round])
+  const speechText = useMemo(() => {
+    if (round.mode === 'chain') return chainLine(round, openSteps - 1)
+    return round.speech ?? round.prompt
+  }, [openSteps, round])
 
   useEffect(() => {
     if (!settings.speak || round.adultOnly) return
     const worthSaying =
       (round.mode === 'card' && phase === 'play') ||
       (round.mode === 'changed' && phase === 'after') ||
-      (round.mode === 'timer' && phase === 'idle')
+      (round.mode === 'timer' && phase === 'idle') ||
+      round.mode === 'chain'
     if (worthSaying) speak(speechText)
   }, [phase, round.adultOnly, round.mode, settings.speak, speechText])
 
@@ -173,6 +188,21 @@ export default function GameScreen({ game, settings }: { game: Game; settings: S
                 {(phase === 'before' ? round.before : round.after).map((emoji, index) => (
                   <span key={index}>{emoji}</span>
                 ))}
+              </div>
+            )}
+
+            {round.mode === 'chain' && (
+              <div className="chain">
+                <div className="chain-trail">
+                  {round.steps.slice(0, Math.min(openSteps, round.steps.length) - 1).map((step, index) => (
+                    <span key={index}>{step.emoji}</span>
+                  ))}
+                </div>
+                <div className="chain-current">
+                  {openSteps > round.steps.length
+                    ? round.ending.emoji
+                    : round.steps[Math.min(openSteps, round.steps.length) - 1]?.emoji}
+                </div>
               </div>
             )}
 
@@ -277,6 +307,21 @@ export default function GameScreen({ game, settings }: { game: Game; settings: S
                   </button>
                 </div>
               </>
+            )}
+          </>
+        )}
+
+        {round.mode === 'chain' && (
+          <>
+            <p className="prompt">{chainLine(round, openSteps - 1)}</p>
+            {openSteps <= round.steps.length ? (
+              <button className="big-button primary" onClick={() => setOpenSteps(openSteps + 1)}>
+                {openSteps === round.steps.length ? 'А кто там?!' : 'Дальше...'}
+              </button>
+            ) : (
+              <button className="big-button primary" onClick={nextTask}>
+                Новая история
+              </button>
             )}
           </>
         )}

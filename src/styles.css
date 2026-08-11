@@ -231,6 +231,28 @@ a {
   font-weight: 800;
 }
 
+.chain {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.chain-trail {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  font-size: 34px;
+  line-height: 1;
+  opacity: 0.5;
+}
+
+.chain-current {
+  font-size: min(38vw, 170px);
+  line-height: 1;
+}
+
 .quiet-stage {
   font-size: 90px;
   opacity: 0.35;
