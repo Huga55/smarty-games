@@ -36,11 +36,11 @@
 
 ## Как поставить на телефон
 
-Каждый пуш в `main` собирает APK и выкладывает его в раздел Releases. Постоянная ссылка
+Каждый пуш в `master` собирает APK и выкладывает его в раздел Releases. Постоянная ссылка
 на самую свежую сборку:
 
 ```
-https://github.com/<пользователь>/<репозиторий>/releases/latest/download/igraem.apk
+https://github.com/Huga55/smarty-games/releases/latest/download/igraem.apk
 ```
 
 На телефоне: открыть ссылку в браузере, скачать файл, открыть его и разрешить установку

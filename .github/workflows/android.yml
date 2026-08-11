@@ -2,7 +2,7 @@ name: Сборка APK
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 permissions:
@@ -65,7 +65,7 @@ jobs:
           path: igraem.apk
 
       - name: Выложить релиз
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/master'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
