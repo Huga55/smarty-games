@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "smoke": "vite build --ssr src/smoke.ts --outDir .smoke --logLevel error && node .smoke/smoke.js",
     "icons": "node scripts/make-icons.mjs",
+    "cars": "node scripts/fetch-car-logos.mjs",
     "android:sync": "cap sync android",
     "android:open": "cap open android"
   },
