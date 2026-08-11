@@ -1,4 +1,5 @@
 import { games } from './game/games'
+import { rules } from './game/rules'
 import { riskyCodePoints } from './lib/emoji'
 import { defaultSettings } from './lib/storage'
 
@@ -12,6 +13,7 @@ let checked = 0
 const problems: string[] = []
 
 for (const game of games) {
+  if (!rules[game.id] || rules[game.id]?.length === 0) problems.push(`${game.id}: нет правил для кнопки «?»`)
   if (game.isAvailable && !game.isAvailable()) {
     console.log(`пропущена (нет данных): ${game.title}`)
     continue

@@ -3,6 +3,7 @@ import type { ChainRound, Game, Round } from '../game/types'
 import { speak, speechAvailable } from '../lib/speech'
 import type { Settings } from '../lib/storage'
 import Confetti from './Confetti'
+import HelpModal from './HelpModal'
 import Visual from './Visual'
 
 type Phase = 'play' | 'show' | 'ask' | 'check' | 'before' | 'after' | 'idle' | 'run' | 'over' | 'chain'
@@ -60,6 +61,7 @@ export default function GameScreen({ game, settings, onSettingsChange }: Props) 
   const [total, setTotal] = useState(0)
   const [finished, setFinished] = useState(false)
   const [confetti, setConfetti] = useState(false)
+  const [helpShown, setHelpShown] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(() => initialSeconds(round))
   /** Сколько шагов истории уже открыто; на один больше числа шагов — открыта развязка. */
   const [openSteps, setOpenSteps] = useState(1)
@@ -149,21 +151,34 @@ export default function GameScreen({ game, settings, onSettingsChange }: Props) 
     if (worthSaying) speak(speechText)
   }, [phase, round.adultOnly, round.mode, settings.speak, speechText, started])
 
+  const header = (
+    <header className="game-header">
+      <a className="icon-button" href="#/" aria-label="В меню">
+        ⬅️
+      </a>
+      <div className="game-title">
+        <strong>
+          {game.emoji} {game.title}
+        </strong>
+        <span className="game-howto">{game.howTo}</span>
+      </div>
+      <button className="icon-button small" aria-label="Как играть" onClick={() => setHelpShown(true)}>
+        ❓
+      </button>
+      {game.scoring && settings.seriesLength > 0 && started && !finished && (
+        <div className="counter">
+          {total + 1}/{settings.seriesLength}
+        </div>
+      )}
+    </header>
+  )
+
   if (!started) {
     const patch = (part: Partial<Settings>) => onSettingsChange({ ...settings, ...part })
     return (
       <div className="screen setup">
-        <header className="game-header">
-          <a className="icon-button" href="#/" aria-label="В меню">
-            ⬅️
-          </a>
-          <div className="game-title">
-            <strong>
-              {game.emoji} {game.title}
-            </strong>
-            <span className="game-howto">{game.howTo}</span>
-          </div>
-        </header>
+        {helpShown && <HelpModal game={game} onClose={() => setHelpShown(false)} />}
+        {header}
 
         {game.setup?.includes('memoryCount') && (
           <div className="setting">
@@ -249,23 +264,9 @@ export default function GameScreen({ game, settings, onSettingsChange }: Props) 
   return (
     <div className="screen game">
       {confetti && <Confetti />}
+      {helpShown && <HelpModal game={game} onClose={() => setHelpShown(false)} />}
 
-      <header className="game-header">
-        <a className="icon-button" href="#/" aria-label="В меню">
-          ⬅️
-        </a>
-        <div className="game-title">
-          <strong>
-            {game.emoji} {game.title}
-          </strong>
-          <span className="game-howto">{game.howTo}</span>
-        </div>
-        {game.scoring && settings.seriesLength > 0 && (
-          <div className="counter">
-            {total + 1}/{settings.seriesLength}
-          </div>
-        )}
-      </header>
+      {header}
 
       <div className="stage">
         {hidden && (

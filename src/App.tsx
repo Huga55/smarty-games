@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import GameScreen from './components/GameScreen'
 import Home from './components/Home'
 import SettingsScreen from './components/SettingsScreen'
 import { gameById } from './game/games'
-import { initSpeech, stopSpeaking } from './lib/speech'
+import { exitApp, listenBack } from './lib/back'
+import { configureSpeech, initSpeech, stopSpeaking } from './lib/speech'
 import { loadSettings, saveSettings } from './lib/storage'
 import type { Settings } from './lib/storage'
 
@@ -24,6 +25,8 @@ export function go(path: string): void {
 export default function App() {
   const hash = useHash()
   const [settings, setSettings] = useState<Settings>(() => loadSettings())
+  const [exitHint, setExitHint] = useState(false)
+  const lastBackPress = useRef(0)
 
   useEffect(() => {
     initSpeech()
@@ -31,6 +34,7 @@ export default function App() {
 
   useEffect(() => {
     saveSettings(settings)
+    configureSpeech({ voiceName: settings.voiceName, rate: settings.speechRate })
   }, [settings])
 
   // Уходя с экрана игры, обрываем недоговорённую фразу.
@@ -38,16 +42,40 @@ export default function App() {
     stopSpeaking()
   }, [hash])
 
+  useEffect(() => {
+    return listenBack(() => {
+      const onHome = window.location.hash === '' || window.location.hash === '#/'
+      if (!onHome) {
+        go('/')
+        return
+      }
+      const now = Date.now()
+      if (now - lastBackPress.current < 2000) {
+        void exitApp()
+        return
+      }
+      lastBackPress.current = now
+      setExitHint(true)
+      window.setTimeout(() => setExitHint(false), 2000)
+    })
+  }, [])
+
   const gameMatch = /^#\/game\/(.+)$/.exec(hash)
-  if (gameMatch) {
-    const game = gameById(gameMatch[1] as string)
-    if (game)
-      return <GameScreen key={game.id} game={game} settings={settings} onSettingsChange={setSettings} />
+  const game = gameMatch ? gameById(gameMatch[1] as string) : undefined
+
+  let screen
+  if (game) {
+    screen = <GameScreen key={game.id} game={game} settings={settings} onSettingsChange={setSettings} />
+  } else if (hash === '#/settings') {
+    screen = <SettingsScreen settings={settings} onChange={setSettings} />
+  } else {
+    screen = <Home />
   }
 
-  if (hash === '#/settings') {
-    return <SettingsScreen settings={settings} onChange={setSettings} />
-  }
-
-  return <Home />
+  return (
+    <>
+      {screen}
+      {exitHint && <div className="toast">Нажми ещё раз, чтобы выйти</div>}
+    </>
+  )
 }

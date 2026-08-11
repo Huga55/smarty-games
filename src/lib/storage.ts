@@ -9,6 +9,10 @@ export interface Settings {
   seriesLength: number
   /** Озвучивать задание голосом. */
   speak: boolean
+  /** Выбранный голос; null — берём лучший из доступных. */
+  voiceName: string | null
+  /** Скорость речи. */
+  speechRate: number
   /** Секунды на «Кто быстрее назовёт». */
   speedSeconds: number
 }
@@ -19,6 +23,8 @@ export const defaultSettings: Settings = {
   memorySeconds: 5,
   seriesLength: 10,
   speak: false,
+  voiceName: null,
+  speechRate: 0.95,
   speedSeconds: 30,
 }
 
