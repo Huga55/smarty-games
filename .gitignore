@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.smoke/
+secrets/
+
+# Android: всё, что генерируется при сборке
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/release.keystore
+
+*.keystore
+*.jks
+.env
+.env.*
