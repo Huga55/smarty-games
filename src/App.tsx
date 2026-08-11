@@ -41,7 +41,8 @@ export default function App() {
   const gameMatch = /^#\/game\/(.+)$/.exec(hash)
   if (gameMatch) {
     const game = gameById(gameMatch[1] as string)
-    if (game) return <GameScreen key={game.id} game={game} settings={settings} />
+    if (game)
+      return <GameScreen key={game.id} game={game} settings={settings} onSettingsChange={setSettings} />
   }
 
   if (hash === '#/settings') {

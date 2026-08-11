@@ -1,7 +1,9 @@
 import { items } from '../content/items'
 import { oddSets } from '../content/odd'
 import { cars, heroes } from '../content/pictures'
-import { riddles, sequences } from '../content/riddles'
+import { rebuses } from '../content/rebus'
+import { orders, patterns, riddles } from '../content/riddles'
+import { truthFacts } from '../content/truth'
 import {
   braveTasks,
   chainBuildings,
@@ -18,7 +20,16 @@ import { letters, pantomimeExtras, speedTopics, wordCategories } from '../conten
 import type { WordCategory } from '../content/words'
 import { nextFrom, pick, randomInt, sample, shuffle } from '../lib/random'
 import type { Settings } from '../lib/storage'
-import type { CardRound, ChainRound, ChangedRound, Game, MemoryRound, Round, TimerRound } from './types'
+import type {
+  CardRound,
+  ChainRound,
+  ChangedRound,
+  Game,
+  MemoryRound,
+  Round,
+  TimerRound,
+  TruthRound,
+} from './types'
 
 const livingCats: Cat[] = ['животное', 'птица', 'рыба', 'насекомое']
 
@@ -134,13 +145,14 @@ const memoryGame: Game = {
   section: 'look',
   howTo: 'Показываем картинки на несколько секунд, потом экран прячется — ребёнок вспоминает.',
   scoring: true,
+  setup: ['memoryCount', 'memorySeconds'],
   next: (settings): MemoryRound => {
     const chosen = sample(items, settings.memoryCount)
     return {
       mode: 'memory',
       emojis: chosen.map((item) => item.emoji),
       labels: chosen.map((item) => item.name),
-      showSeconds: settings.memoryCount + 2,
+      showSeconds: settings.memorySeconds,
       prompt: 'Запомни картинки!',
       answer: chosen.map((item) => item.name).join(', '),
     }
@@ -154,6 +166,7 @@ const changedGame: Game = {
   section: 'look',
   howTo: 'Показываем картинки, прячем, показываем снова — но одна уже другая.',
   scoring: true,
+  setup: ['memoryCount', 'memorySeconds'],
   next: (settings): ChangedRound => {
     const chosen = sample(items, settings.memoryCount)
     const replaceAt = randomInt(0, chosen.length - 1)
@@ -165,7 +178,7 @@ const changedGame: Game = {
       mode: 'changed',
       before: chosen.map((item) => item.emoji),
       after: after.map((item) => item.emoji),
-      showSeconds: settings.memoryCount + 2,
+      showSeconds: settings.memorySeconds,
       prompt: 'Что изменилось?',
       answer: `Было «${oldItem.name}», стало «${newItem.name}»`,
       answerEmoji: newItem.emoji,
@@ -191,7 +204,7 @@ const letterGame: Game = {
     const examples = examplesFor(category, letter.letter)
     return {
       mode: 'card',
-      visual: { kind: 'letter', text: letter.letter },
+      visual: { kind: 'letter', text: letter.letter, badge: category.emoji },
       prompt: `Назови ${category.label} на букву «${letter.letter}»`,
       speech: `Назови ${category.label} на букву ${letter.letter}`,
       hints: examples.length > 0 ? [`Подсказки: ${examples.slice(0, 6).join(', ')}`] : undefined,
@@ -207,8 +220,12 @@ const riddleGame: Game = {
   section: 'listen',
   howTo: 'Читаем загадку вслух, ребёнок отвечает словами.',
   scoring: true,
-  next: (): CardRound => {
-    const kind = pick(['manual', 'manual', 'sound', 'facts'] as const)
+  next: (settings): CardRound => {
+    // В простом режиме чаще спрашиваем про звуки и приметы, в сложном —
+    // настоящие загадки с подвохом.
+    const kind = settings.hard
+      ? pick(['manual', 'manual', 'manual', 'facts'] as const)
+      : pick(['manual', 'sound', 'sound', 'facts'] as const)
 
     if (kind === 'sound') {
       const speaking = items.filter((item) => item.sound)
@@ -219,7 +236,6 @@ const riddleGame: Game = {
         prompt: `Кто говорит «${item.sound}»?`,
         answer: item.name,
         answerEmoji: item.emoji,
-        adultOnly: true,
       }
     }
 
@@ -234,18 +250,37 @@ const riddleGame: Game = {
         prompt: `Угадай: ${item.cats[0]}, ${facts.join(', ')}. ${question}`,
         answer: item.name,
         answerEmoji: item.emoji,
-        adultOnly: true,
       }
     }
 
-    const riddle = nextFrom('riddles', riddles)
+    const pool = settings.hard ? riddles : riddles.filter((riddle) => !riddle.hard)
+    const riddle = nextFrom(settings.hard ? 'riddlesHard' : 'riddlesEasy', pool)
     return {
       mode: 'card',
       visual: { kind: 'none' },
       prompt: riddle.q,
       answer: riddle.a,
       answerEmoji: riddle.emoji,
-      adultOnly: true,
+    }
+  },
+}
+
+const rebusGame: Game = {
+  id: 'rebus',
+  title: 'Ребусы',
+  emoji: '➕',
+  section: 'listen',
+  howTo: 'Складываем две картинки. Что получится? Ответ тоже картинкой.',
+  scoring: true,
+  next: (): CardRound => {
+    const rebus = nextFrom('rebuses', rebuses)
+    return {
+      mode: 'card',
+      visual: { kind: 'rebus', left: rebus.left, right: rebus.right },
+      prompt: 'Что получится, если сложить?',
+      answer: rebus.answer,
+      answerEmoji: rebus.answerEmoji,
+      hints: [rebus.hint],
     }
   },
 }
@@ -332,22 +367,61 @@ const pairGame: Game = {
   },
 }
 
-const sequenceGame: Game = {
-  id: 'sequence',
-  title: 'Что будет дальше?',
-  emoji: '➡️',
+const orderGame: Game = {
+  id: 'order',
+  title: 'Что сначала?',
+  emoji: '🔀',
   section: 'listen',
-  howTo: 'Показываем цепочку картинок и спрашиваем, что будет дальше.',
+  howTo: 'Картинки перемешаны. Ребёнок говорит, что было сначала, а что потом.',
   scoring: true,
   next: (): CardRound => {
-    const sequence = nextFrom('sequences', sequences)
+    const order = nextFrom('orders', orders)
+    const mixed = shuffle(order.steps)
     return {
       mode: 'card',
-      visual: { kind: 'sequence', steps: sequence.steps },
-      prompt: 'Что будет дальше?',
-      answer: sequence.answer,
-      answerEmoji: sequence.answerEmoji,
-      hints: ['Спроси, почему именно так'],
+      visual: { kind: 'emoji', emojis: mixed.map((step) => step.emoji) },
+      prompt: `Что было сначала, а что потом: ${mixed.map((step) => step.label).join(', ')}?`,
+      answer: order.answer,
+      hints: ['Спроси, почему именно так', 'Можно разложить по порядку на пальцах: раз, два, три'],
+    }
+  },
+}
+
+const patternGame: Game = {
+  id: 'pattern',
+  title: 'Продолжи узор',
+  emoji: '🔵',
+  section: 'look',
+  howTo: 'Показываем ряд картинок. Какая будет следующей?',
+  scoring: true,
+  next: (): CardRound => {
+    const pattern = nextFrom('patterns', patterns)
+    return {
+      mode: 'card',
+      visual: { kind: 'sequence', steps: pattern.steps },
+      prompt: 'Какая картинка будет следующей?',
+      answer: pattern.answer,
+      answerEmoji: pattern.answerEmoji,
+    }
+  },
+}
+
+const truthGame: Game = {
+  id: 'truth',
+  title: 'Правда или нет',
+  emoji: '🤔',
+  section: 'together',
+  howTo: 'Читаем вслух, ребёнок сам жмёт кнопку. После ответа обязательно читаем объяснение.',
+  scoring: true,
+  next: (settings): TruthRound => {
+    const pool = settings.hard ? truthFacts : truthFacts.filter((fact) => !fact.hard)
+    const fact = nextFrom(settings.hard ? 'truthHard' : 'truthEasy', pool)
+    return {
+      mode: 'truth',
+      emoji: fact.emoji,
+      truth: fact.truth,
+      why: fact.why,
+      prompt: fact.text,
     }
   },
 }
@@ -393,7 +467,7 @@ const pantomimeGame: Game = {
         mode: 'card',
         visual: { kind: 'emoji', emojis: [item.emoji] },
         subject: item.name,
-        prompt: `Покажи без слов: ${item.name}`,
+        prompt: 'Посмотри на картинку и покажи это без слов',
         answer: item.name,
         hints: ['Говорить нельзя — только движения'],
         adultOnly: true,
@@ -403,7 +477,8 @@ const pantomimeGame: Game = {
     return {
       mode: 'card',
       visual: { kind: 'none' },
-      prompt: `Покажи без слов: ${action}`,
+      subject: action,
+      prompt: 'Загляни под шторку и покажи это без слов',
       answer: action,
       hints: ['Говорить нельзя — только движения'],
       adultOnly: true,
@@ -558,11 +633,14 @@ export const games: Game[] = [
   countGame,
   memoryGame,
   changedGame,
+  patternGame,
   letterGame,
   riddleGame,
+  rebusGame,
   oddGame,
   pairGame,
-  sequenceGame,
+  orderGame,
+  truthGame,
   whoAmIGame,
   pantomimeGame,
   explainGame,

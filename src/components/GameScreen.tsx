@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ChainRound, Game, Round } from '../game/types'
 import { speak, speechAvailable } from '../lib/speech'
 import type { Settings } from '../lib/storage'
+import Confetti from './Confetti'
 import Visual from './Visual'
 
 type Phase = 'play' | 'show' | 'ask' | 'check' | 'before' | 'after' | 'idle' | 'run' | 'over' | 'chain'
@@ -40,15 +41,25 @@ function praise(right: number, total: number): string {
   return 'Поиграли — уже хорошо. Попробуем ещё?'
 }
 
-export default function GameScreen({ game, settings }: { game: Game; settings: Settings }) {
+interface Props {
+  game: Game
+  settings: Settings
+  onSettingsChange: (settings: Settings) => void
+}
+
+export default function GameScreen({ game, settings, onSettingsChange }: Props) {
+  const [started, setStarted] = useState(() => !game.setup)
   const [round, setRound] = useState<Round>(() => game.next(settings))
   const [phase, setPhase] = useState<Phase>(() => initialPhase(round))
   const [visualShown, setVisualShown] = useState(() => !round.adultOnly)
+  const [silhouette, setSilhouette] = useState(false)
   const [answerShown, setAnswerShown] = useState(false)
   const [hintsShown, setHintsShown] = useState(() => !round.answer)
+  const [choice, setChoice] = useState<boolean | null>(null)
   const [right, setRight] = useState(0)
   const [total, setTotal] = useState(0)
   const [finished, setFinished] = useState(false)
+  const [confetti, setConfetti] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(() => initialSeconds(round))
   /** Сколько шагов истории уже открыто; на один больше числа шагов — открыта развязка. */
   const [openSteps, setOpenSteps] = useState(1)
@@ -57,8 +68,10 @@ export default function GameScreen({ game, settings }: { game: Game; settings: S
     setRound(nextRound)
     setPhase(initialPhase(nextRound))
     setVisualShown(!nextRound.adultOnly)
+    setSilhouette(false)
     setAnswerShown(false)
     setHintsShown(!nextRound.answer)
+    setChoice(null)
     setSecondsLeft(initialSeconds(nextRound))
     setOpenSteps(1)
   }, [])
@@ -67,19 +80,39 @@ export default function GameScreen({ game, settings }: { game: Game; settings: S
     startRound(game.next(settings))
   }, [game, settings, startRound])
 
-  const score = useCallback(
-    (correct: boolean) => {
-      if (correct) buzz(30)
+  const finishRound = useCallback(
+    (correct: boolean, celebrate = correct) => {
       const nextTotal = total + 1
       setTotal(nextTotal)
       if (correct) setRight((value) => value + 1)
-      if (settings.seriesLength > 0 && nextTotal >= settings.seriesLength) {
-        setFinished(true)
-        return
+
+      const proceed = () => {
+        setConfetti(false)
+        if (settings.seriesLength > 0 && nextTotal >= settings.seriesLength) setFinished(true)
+        else startRound(game.next(settings))
       }
-      nextTask()
+
+      if (celebrate) {
+        buzz(30)
+        setConfetti(true)
+        window.setTimeout(proceed, 850)
+      } else {
+        proceed()
+      }
     },
-    [nextTask, settings.seriesLength, total],
+    [game, settings, startRound, total],
+  )
+
+  const chooseTruth = useCallback(
+    (value: boolean) => {
+      setChoice(value)
+      if (round.mode === 'truth' && value === round.truth) {
+        buzz(30)
+        setConfetti(true)
+        window.setTimeout(() => setConfetti(false), 900)
+      }
+    },
+    [round],
   )
 
   // Показ картинок в играх на память и обратный отсчёт в «Кто быстрее».
@@ -106,14 +139,80 @@ export default function GameScreen({ game, settings }: { game: Game; settings: S
   }, [openSteps, round])
 
   useEffect(() => {
-    if (!settings.speak || round.adultOnly) return
+    if (!settings.speak || round.adultOnly || !started) return
     const worthSaying =
       (round.mode === 'card' && phase === 'play') ||
       (round.mode === 'changed' && phase === 'after') ||
       (round.mode === 'timer' && phase === 'idle') ||
+      round.mode === 'truth' ||
       round.mode === 'chain'
     if (worthSaying) speak(speechText)
-  }, [phase, round.adultOnly, round.mode, settings.speak, speechText])
+  }, [phase, round.adultOnly, round.mode, settings.speak, speechText, started])
+
+  if (!started) {
+    const patch = (part: Partial<Settings>) => onSettingsChange({ ...settings, ...part })
+    return (
+      <div className="screen setup">
+        <header className="game-header">
+          <a className="icon-button" href="#/" aria-label="В меню">
+            ⬅️
+          </a>
+          <div className="game-title">
+            <strong>
+              {game.emoji} {game.title}
+            </strong>
+            <span className="game-howto">{game.howTo}</span>
+          </div>
+        </header>
+
+        {game.setup?.includes('memoryCount') && (
+          <div className="setting">
+            <div className="setting-label">Сколько картинок?</div>
+            <div className="chips">
+              {[3, 4, 5, 6, 7].map((value) => (
+                <button
+                  key={value}
+                  className={`chip ${settings.memoryCount === value ? 'on' : ''}`}
+                  onClick={() => patch({ memoryCount: value })}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {game.setup?.includes('memorySeconds') && (
+          <div className="setting">
+            <div className="setting-label">Сколько секунд смотреть?</div>
+            <div className="chips">
+              {[3, 5, 7, 10, 15].map((value) => (
+                <button
+                  key={value}
+                  className={`chip ${settings.memorySeconds === value ? 'on' : ''}`}
+                  onClick={() => patch({ memorySeconds: value })}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <p className="setting-hint">Выбор запомнится и в следующий раз будет предложен снова.</p>
+
+        <button
+          className="big-button primary"
+          onClick={() => {
+            setStarted(true)
+            nextTask()
+          }}
+        >
+          Начали!
+        </button>
+      </div>
+    )
+  }
 
   if (finished) {
     return (
@@ -142,9 +241,15 @@ export default function GameScreen({ game, settings }: { game: Game; settings: S
   }
 
   const showHintsBlock = (round.hints && round.hints.length > 0) || round.note
+  const hasVisual = round.mode === 'card' && round.visual.kind !== 'none'
+  /** Шторка нужна только там, где на экране есть что скрывать от ребёнка. */
+  const hasSecret = hasVisual || Boolean(round.subject)
+  const hidden = Boolean(round.adultOnly) && hasSecret && !visualShown && !silhouette
 
   return (
     <div className="screen game">
+      {confetti && <Confetti />}
+
       <header className="game-header">
         <a className="icon-button" href="#/" aria-label="В меню">
           ⬅️
@@ -163,17 +268,26 @@ export default function GameScreen({ game, settings }: { game: Game; settings: S
       </header>
 
       <div className="stage">
-        {round.adultOnly && !visualShown && (
-          <button className="curtain" onClick={() => setVisualShown(true)}>
-            <span className="curtain-emoji">🙈</span>
-            <span>Ребёнку не показываем</span>
-            <span className="curtain-hint">Нажми, чтобы увидеть задание</span>
-          </button>
+        {hidden && (
+          <div className="curtain-box">
+            <button className="curtain" onClick={() => setVisualShown(true)}>
+              <span className="curtain-emoji">🙈</span>
+              <span>Ребёнку не показываем</span>
+              <span className="curtain-hint">Нажми, чтобы посмотреть самому</span>
+            </button>
+            {hasVisual && (
+              <button className="text-button" onClick={() => setSilhouette(true)}>
+                Подсказать ребёнку: показать силуэт
+              </button>
+            )}
+          </div>
         )}
 
-        {(!round.adultOnly || visualShown) && (
+        {!hidden && (
           <>
-            {round.mode === 'card' && <Visual visual={round.visual} />}
+            {round.mode === 'card' && <Visual visual={round.visual} silhouette={silhouette && !visualShown} />}
+
+            {round.mode === 'truth' && <div className="emoji-wall single">{round.emoji}</div>}
 
             {round.mode === 'memory' && (phase === 'show' || phase === 'check') && (
               <div className="emoji-wall some">
@@ -209,7 +323,7 @@ export default function GameScreen({ game, settings }: { game: Game; settings: S
             {round.mode === 'timer' && phase === 'run' && <div className="big-letter">{secondsLeft}</div>}
             {round.mode === 'timer' && phase === 'over' && <div className="big-letter">⏰</div>}
 
-            {round.subject && visualShown && round.adultOnly && <div className="subject">{round.subject}</div>}
+            {round.subject && round.adultOnly && visualShown && <div className="subject">{round.subject}</div>}
           </>
         )}
 
@@ -242,10 +356,10 @@ export default function GameScreen({ game, settings }: { game: Game; settings: S
           <>
             <p className="prompt">Было: {round.labels.join(', ')}</p>
             <div className="row">
-              <button className="big-button good" onClick={() => score(true)}>
+              <button className="big-button good" onClick={() => finishRound(true)}>
                 Справился
               </button>
-              <button className="big-button" onClick={() => score(false)}>
+              <button className="big-button" onClick={() => finishRound(false)}>
                 Не всё
               </button>
             </div>
@@ -259,10 +373,10 @@ export default function GameScreen({ game, settings }: { game: Game; settings: S
               <>
                 <p className="answer">{round.answer}</p>
                 <div className="row">
-                  <button className="big-button good" onClick={() => score(true)}>
+                  <button className="big-button good" onClick={() => finishRound(true)}>
                     Угадал
                   </button>
-                  <button className="big-button" onClick={() => score(false)}>
+                  <button className="big-button" onClick={() => finishRound(false)}>
                     Мимо
                   </button>
                 </div>
@@ -314,11 +428,22 @@ export default function GameScreen({ game, settings }: { game: Game; settings: S
         {round.mode === 'chain' && (
           <>
             <p className="prompt">{chainLine(round, openSteps - 1)}</p>
-            {openSteps <= round.steps.length ? (
+            {openSteps < round.steps.length && (
               <button className="big-button primary" onClick={() => setOpenSteps(openSteps + 1)}>
-                {openSteps === round.steps.length ? 'А кто там?!' : 'Дальше...'}
+                Дальше...
               </button>
-            ) : (
+            )}
+            {openSteps === round.steps.length && (
+              <>
+                <button className="big-button intrigue" onClick={() => setOpenSteps(openSteps + 1)}>
+                  🥁 А кто там?!
+                </button>
+                <p className="setting-hint">
+                  Дальше развязка. Сделай долгую паузу, спроси шёпотом: «Как ты думаешь, кто там?»
+                </p>
+              </>
+            )}
+            {openSteps > round.steps.length && (
               <button className="big-button primary" onClick={nextTask}>
                 Новая история
               </button>
@@ -326,7 +451,31 @@ export default function GameScreen({ game, settings }: { game: Game; settings: S
           </>
         )}
 
-        {round.mode === 'card' && (!round.adultOnly || visualShown) && (
+        {round.mode === 'truth' && (
+          <>
+            <p className="prompt">{round.prompt}</p>
+            {choice === null ? (
+              <div className="row">
+                <button className="big-button good" onClick={() => chooseTruth(true)}>
+                  👍 Правда
+                </button>
+                <button className="big-button no" onClick={() => chooseTruth(false)}>
+                  👎 Неправда
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="answer">{choice === round.truth ? 'Верно! 🎉' : 'А вот и нет!'}</p>
+                <p className="why">{round.why}</p>
+                <button className="big-button primary" onClick={() => finishRound(choice === round.truth, false)}>
+                  Дальше
+                </button>
+              </>
+            )}
+          </>
+        )}
+
+        {round.mode === 'card' && (
           <>
             <p className="prompt">{round.prompt}</p>
             {round.subject && !round.adultOnly && <p className="subject">{round.subject}</p>}
@@ -338,19 +487,19 @@ export default function GameScreen({ game, settings }: { game: Game; settings: S
             )}
 
             {round.answer && answerShown && (
-              <p className="answer">
-                {round.answerEmoji && <span className="answer-emoji">{round.answerEmoji}</span>}
-                {round.answer}
-              </p>
+              <div className="answer-block">
+                {round.answerEmoji && <div className="answer-emoji">{round.answerEmoji}</div>}
+                <p className="answer">{round.answer}</p>
+              </div>
             )}
 
             {(!round.answer || answerShown) &&
               (game.scoring ? (
                 <div className="row">
-                  <button className="big-button good" onClick={() => score(true)}>
+                  <button className="big-button good" onClick={() => finishRound(true)}>
                     Угадал
                   </button>
-                  <button className="big-button" onClick={() => score(false)}>
+                  <button className="big-button" onClick={() => finishRound(false)}>
                     Мимо
                   </button>
                 </div>
@@ -366,6 +515,22 @@ export default function GameScreen({ game, settings }: { game: Game; settings: S
           <button className="text-button" onClick={nextTask}>
             Другое задание
           </button>
+          {round.adultOnly && visualShown && hasSecret && (
+            <button
+              className="text-button"
+              onClick={() => {
+                setVisualShown(false)
+                setSilhouette(false)
+              }}
+            >
+              Спрятать картинку
+            </button>
+          )}
+          {round.adultOnly && !silhouette && !hidden && hasVisual && (
+            <button className="text-button" onClick={() => setSilhouette(true)}>
+              Показать силуэт
+            </button>
+          )}
           {showHintsBlock && (
             <button className="text-button" onClick={() => setHintsShown((value) => !value)}>
               {hintsShown ? 'Скрыть подсказки' : 'Подсказки'}

@@ -42,6 +42,8 @@ export interface WordCategory {
   id: string
   /** Подставляется в задание: «Назови ЖИВОТНОЕ на букву Б». */
   label: string
+  /** Картинка категории: ребёнок не читает, но видит, что от него хотят. */
+  emoji: string
   /** Откуда брать примеры-подсказки для взрослого. */
   cats?: Cat[]
   extraExamples?: string[]
@@ -49,17 +51,18 @@ export interface WordCategory {
 }
 
 export const wordCategories: WordCategory[] = [
-  { id: 'animal', label: 'животное', cats: ['животное', 'птица', 'рыба', 'насекомое'] },
-  { id: 'fruit', label: 'фрукт или ягоду', cats: ['фрукт', 'ягода'] },
-  { id: 'vegetable', label: 'овощ', cats: ['овощ'] },
-  { id: 'food', label: 'еду', cats: ['еда', 'фрукт', 'овощ', 'ягода'] },
-  { id: 'transport', label: 'транспорт', cats: ['транспорт'] },
-  { id: 'thing', label: 'любой предмет', cats: ['предмет', 'посуда', 'мебель', 'инструмент'] },
-  { id: 'clothes', label: 'одежду', cats: ['одежда'] },
-  { id: 'toy', label: 'игрушку', cats: ['игрушка'] },
+  { id: 'animal', label: 'животное', emoji: '🐶', cats: ['животное', 'птица', 'рыба', 'насекомое'] },
+  { id: 'fruit', label: 'фрукт или ягоду', emoji: '🍎', cats: ['фрукт', 'ягода'] },
+  { id: 'vegetable', label: 'овощ', emoji: '🥕', cats: ['овощ'] },
+  { id: 'food', label: 'еду', emoji: '🍞', cats: ['еда', 'фрукт', 'овощ', 'ягода'] },
+  { id: 'transport', label: 'транспорт', emoji: '🚗', cats: ['транспорт'] },
+  { id: 'thing', label: 'любой предмет', emoji: '🔑', cats: ['предмет', 'посуда', 'мебель', 'инструмент'] },
+  { id: 'clothes', label: 'одежду', emoji: '👕', cats: ['одежда'] },
+  { id: 'toy', label: 'игрушку', emoji: '🧸', cats: ['игрушка'] },
   {
     id: 'name',
     label: 'имя',
+    emoji: '🧒',
     extraExamples: [
       'Аня',
       'Боря',
@@ -88,6 +91,7 @@ export const wordCategories: WordCategory[] = [
   {
     id: 'profession',
     label: 'профессию',
+    emoji: '👷',
     hard: true,
     extraExamples: [
       'артист',
@@ -120,6 +124,7 @@ export const wordCategories: WordCategory[] = [
   {
     id: 'cartoon',
     label: 'героя из мультика',
+    emoji: '🎬',
     hard: true,
     extraExamples: [
       'Аладдин',
@@ -150,6 +155,7 @@ export const wordCategories: WordCategory[] = [
   {
     id: 'city',
     label: 'город',
+    emoji: '🏙️',
     hard: true,
     extraExamples: ['Астрахань', 'Брянск', 'Владимир', 'Гомель', 'Донецк', 'Курск', 'Львов', 'Москва', 'Омск', 'Псков', 'Ростов', 'Сочи', 'Тула', 'Уфа', 'Харьков'],
   },

@@ -1,4 +1,5 @@
 import { games } from './game/games'
+import { riskyCodePoints } from './lib/emoji'
 import { defaultSettings } from './lib/storage'
 
 const variants = [
@@ -41,6 +42,30 @@ for (const game of games) {
         if (diff !== 1) problems.push(`${where}: изменилось ${diff} картинок вместо одной`)
       }
       if (round.mode === 'timer' && round.seconds <= 0) problems.push(`${where}: таймер на ${round.seconds} секунд`)
+      if (round.mode === 'card' && round.visual.kind === 'rebus') {
+        if (!round.visual.left || !round.visual.right) problems.push(`${where}: в ребусе нет картинки`)
+        if (!round.answerEmoji) problems.push(`${where}: у ребуса нет ответа картинкой`)
+      }
+      if (round.mode === 'card' && round.visual.kind === 'sequence' && round.visual.steps.length < 4) {
+        problems.push(`${where}: узор из ${round.visual.steps.length} картинок — мало`)
+      }
+      if (round.mode === 'truth' && (!round.why || !round.emoji)) problems.push(`${where}: факт без объяснения`)
+      const emojis = [
+        round.answerEmoji,
+        round.mode === 'truth' ? round.emoji : undefined,
+        round.mode === 'card' && round.visual.kind === 'emoji' ? round.visual.emojis.join('') : undefined,
+        round.mode === 'card' && round.visual.kind === 'sequence' ? round.visual.steps.join('') : undefined,
+        round.mode === 'card' && round.visual.kind === 'rebus' ? round.visual.left + round.visual.right : undefined,
+        round.mode === 'card' && round.visual.kind === 'letter' ? round.visual.badge : undefined,
+        round.mode === 'memory' ? round.emojis.join('') : undefined,
+        round.mode === 'changed' ? round.before.join('') + round.after.join('') : undefined,
+        round.mode === 'chain' ? round.steps.map((step) => step.emoji).join('') + round.ending.emoji : undefined,
+      ]
+      for (const emoji of emojis) {
+        if (!emoji) continue
+        const risky = riskyCodePoints(emoji)
+        if (risky.length > 0) problems.push(`${where}: эмодзи может не отобразиться — ${risky.join(', ')}`)
+      }
       if (round.mode === 'chain') {
         if (round.steps.length < 3) problems.push(`${where}: в истории всего ${round.steps.length} шага`)
         if (round.steps.some((step) => !step.emoji || !step.text)) problems.push(`${where}: пустой шаг истории`)

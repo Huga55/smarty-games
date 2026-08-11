@@ -170,7 +170,7 @@ export const oddSets: OddSet[] = [
   },
   {
     options: [
-      { emoji: '🪥', label: 'зубная щётка' },
+      { emoji: '🧽', label: 'мочалка' },
       { emoji: '🧼', label: 'мыло' },
       { emoji: '🚿', label: 'душ' },
       { emoji: '🎸', label: 'гитара' },

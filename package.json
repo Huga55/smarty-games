@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "smoke": "vite build --ssr src/smoke.ts --outDir .smoke --logLevel error && node .smoke/smoke.js",
+    "check:emoji": "vite build --ssr src/checkEmoji.ts --outDir .smoke --logLevel error && node .smoke/checkEmoji.js",
     "icons": "node scripts/make-icons.mjs",
     "cars": "node scripts/fetch-car-logos.mjs",
     "android:sync": "cap sync android",

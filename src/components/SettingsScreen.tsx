@@ -42,13 +42,29 @@ export default function SettingsScreen({ settings, onChange }: Props) {
       <div className="setting">
         <div className="setting-label">Картинок в играх на память</div>
         <div className="chips">
-          {[3, 4, 5, 6].map((value) => (
+          {[3, 4, 5, 6, 7].map((value) => (
             <button
               key={value}
               className={`chip ${settings.memoryCount === value ? 'on' : ''}`}
               onClick={() => patch({ memoryCount: value })}
             >
               {value}
+            </button>
+          ))}
+        </div>
+        <p className="setting-hint">Это значение предлагается перед началом игры, там же его можно поменять.</p>
+      </div>
+
+      <div className="setting">
+        <div className="setting-label">Секунд на запоминание</div>
+        <div className="chips">
+          {[3, 5, 7, 10, 15].map((value) => (
+            <button
+              key={value}
+              className={`chip ${settings.memorySeconds === value ? 'on' : ''}`}
+              onClick={() => patch({ memorySeconds: value })}
+            >
+              {value} c
             </button>
           ))}
         </div>

@@ -3,9 +3,11 @@ import type { Settings } from '../lib/storage'
 export type Visual =
   | { kind: 'none' }
   | { kind: 'emoji'; emojis: string[] }
-  | { kind: 'letter'; text: string }
+  /** Буква и картинка категории рядом: ребёнок не читает, но видит, что назвать. */
+  | { kind: 'letter'; text: string; badge?: string }
   | { kind: 'image'; src: string }
   | { kind: 'sequence'; steps: string[] }
+  | { kind: 'rebus'; left: string; right: string }
 
 interface RoundBase {
   /** Задание словами — его читает или произносит взрослый. */
@@ -55,7 +57,15 @@ export interface ChainRound extends RoundBase {
   ending: { emoji: string; text: string }
 }
 
-export type Round = CardRound | MemoryRound | ChangedRound | TimerRound | ChainRound
+/** Единственный режим, где кнопку нажимает сам ребёнок. */
+export interface TruthRound extends RoundBase {
+  mode: 'truth'
+  emoji: string
+  truth: boolean
+  why: string
+}
+
+export type Round = CardRound | MemoryRound | ChangedRound | TimerRound | ChainRound | TruthRound
 
 export type SectionId = 'look' | 'listen' | 'together' | 'scary'
 
@@ -81,6 +91,8 @@ export interface Game {
   howTo: string
   /** Показывать кнопки «Угадал / Мимо» и считать счёт. */
   scoring: boolean
+  /** Что спросить перед началом игры. */
+  setup?: ('memoryCount' | 'memorySeconds')[]
   /** Игра появляется в меню только если данные для неё есть. */
   isAvailable?: () => boolean
   /** Что показать, если данных нет. */
